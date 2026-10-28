@@ -33,13 +33,13 @@ app.get('/', (req, res) => {
   <main class="max-w-2xl w-full space-y-8">
     <div class="text-center space-y-3">
       <span class="inline-block rounded-full bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-400">
-        Node.js + PostgreSQL + Redis Cache-Aside + Rate Limiter
+        Node.js + PostgreSQL 18 + Redis Cache-Aside + Token Bucket Rate Limiter
       </span>
       <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
         High-Performance URL Shortener
       </h1>
       <p class="text-slate-400 text-sm">
-        Deterministic Base62 encoding with cached redirects and non-blocking click telemetry.
+        Deterministic Base62 encoding with sub-10ms cached redirects and non-blocking SHA-256 click telemetry.
       </p>
     </div>
 
