@@ -7,6 +7,8 @@ dotenv.config();
 // 1. PostgreSQL Connection Pool
 export const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
+  // Neon requires SSL; suppress pg-connection-string v3 deprecation warning
+  ssl: process.env.DATABASE_URL?.includes('neon.tech') ? { rejectUnauthorized: false } : undefined,
 });
 
 pool.on('error', (err) => console.error('PostgreSQL Pool Error:', err.message || err));
