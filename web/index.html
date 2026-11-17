@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#070a11" />
+  <meta name="description" content="Base62 — a high-performance URL shortener with deterministic codes, Redis cache-aside redirects and privacy-safe click telemetry." />
+  <meta name="api-base" content="" />
+  <title>Base62 — High-Performance URL Shortener</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="app.css" />
+  <link rel="stylesheet" href="theme.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="shell topbar__inner">
+      <a class="brand" href="./" aria-label="Base62 home">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+            <path d="M10 13.5a4 4 0 0 0 5.7 0l2.6-2.6a4 4 0 0 0-5.7-5.7L11.4 6.4" stroke-linecap="round"/>
+            <path d="M14 10.5a4 4 0 0 0-5.7 0l-2.6 2.6a4 4 0 0 0 5.7 5.7l1.2-1.2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="brand__name">Base<span>62</span></span>
+        <span class="brand__tag">url shortener</span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a href="#shorten" class="is-active">Shorten</a>
+        <a href="#links">Links</a>
+        <a href="#architecture">Architecture</a>
+        <span class="nav__divider" aria-hidden="true"></span>
+        <a href="https://github.com/sklevel8/high-performance-url-shortener" target="_blank" rel="noopener">GitHub ↗</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="shell page">
+    <section class="hero" id="shorten">
+      <div>
+        <div class="eyebrow"><span class="eyebrow__dot"></span> Base62 · Redis cache-aside · PostgreSQL</div>
+        <h1>Long links, meet <span>milliseconds.</span></h1>
+        <p class="lede">
+          Deterministic short codes, sub-10&nbsp;ms cached redirects and fire-and-forget click
+          telemetry. Every code is a reversible Base62 encoding of its row ID — no collisions,
+          no random retries.
+        </p>
+
+        <div class="mini-stats">
+          <div><strong id="heroLinks">0</strong><span>links in this browser</span></div>
+          <div><strong id="heroClicks">0</strong><span>tracked clicks</span></div>
+          <div><strong>&lt;10&nbsp;ms</strong><span>cached redirect</span></div>
+        </div>
+      </div>
+
+      <div class="card card--accent shorten-card">
+        <div class="card__head">
+          <div>
+            <h2 class="card__title">Create a short link</h2>
+            <p class="card__hint" id="modeHint">Demo mode — links are stored locally</p>
+          </div>
+          <span class="badge badge--accent" id="modeBadge">DEMO</span>
+        </div>
+
+        <form id="shortenForm" class="stack">
+          <div class="field">
+            <label class="field__label" for="urlInput">Destination URL</label>
+            <input id="urlInput" class="input" type="url" inputmode="url" required
+              placeholder="https://github.com/sklevel8/high-performance-url-shortener" autocomplete="off" />
+          </div>
+          <div class="row">
+            <div class="field grow">
+              <label class="field__label" for="slugInput">Custom code <span class="dim">(optional)</span></label>
+              <input id="slugInput" class="input mono" type="text" placeholder="launch-2026" maxlength="24"
+                pattern="[A-Za-z0-9_-]{2,24}" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label class="field__label" for="ttlSelect">Expiry</label>
+              <select id="ttlSelect" class="select">
+                <option value="never">Never</option>
+                <option value="7">7 days</option>
+                <option value="30">30 days</option>
+                <option value="90">90 days</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn--primary btn--block" type="submit" id="submitBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Shorten URL</span>
+          </button>
+        </form>
+
+        <div id="result" class="result" hidden>
+          <div class="result__top">
+            <span class="badge badge--ok"><span class="dot"></span> Ready</span>
+            <span class="tiny dim mono" id="resultCode"></span>
+          </div>
+          <div class="result__row">
+            <a id="shortLink" class="result__url mono" href="#" target="_blank" rel="noopener"></a>
+            <button class="btn btn--sm btn--ghost" type="button" id="copyBtn">Copy</button>
+          </div>
+          <div class="result__orig tiny dim" id="originalUrl"></div>
+        </div>
+
+        <div id="errorBox" class="alert alert--bad" role="alert" hidden></div>
+      </div>
+    </section>
+
+    <section class="section" id="links">
+      <div class="section__head">
+        <div>
+          <h2 class="h2">Your links</h2>
+          <p class="section__desc">Click analytics are hashed with SHA-256 before storage, so no raw IPs are kept.</p>
+        </div>
+        <div class="row">
+          <div class="tabs" role="tablist" aria-label="Filter links">
+            <button class="tab" role="tab" aria-selected="true" data-filter="all">All</button>
+            <button class="tab" role="tab" aria-selected="false" data-filter="active">Active</button>
+            <button class="tab" role="tab" aria-selected="false" data-filter="expired">Expired</button>
+          </div>
+          <button class="btn btn--sm btn--ghost" type="button" id="clearBtn">Clear all</button>
+        </div>
+      </div>
+
+      <div class="grid grid--4 metric-row">
+        <div class="card metric">
+          <span class="stat__label">Total links</span>
+          <span class="stat__value" id="statLinks">0</span>
+          <span class="stat__meta"><span class="delta delta--up" id="statLinksDelta">+0 today</span></span>
+        </div>
+        <div class="card metric">
+          <span class="stat__label">Total clicks</span>
+          <span class="stat__value" id="statClicks">0</span>
+          <span class="stat__meta" id="statUnique">0 unique visitors</span>
+        </div>
+        <div class="card metric">
+          <span class="stat__label">Top performer</span>
+          <span class="stat__value stat__value--sm mono" id="statTop">—</span>
+          <span class="stat__meta" id="statTopMeta">no data yet</span>
+        </div>
+        <div class="card metric">
+          <span class="stat__label">Cache hit rate</span>
+          <span class="stat__value" id="statCache">94.2%</span>
+          <span class="stat__meta">simulated Redis warm path</span>
+        </div>
+      </div>
+
+      <div class="card card--flush table-card">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">Short code</th>
+                <th scope="col">Destination</th>
+                <th scope="col" class="num">Clicks</th>
+                <th scope="col">Trend</th>
+                <th scope="col">Created</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody id="linkRows"></tbody>
+          </table>
+        </div>
+        <div id="emptyState" class="empty">
+          <strong>No links yet</strong>
+          <span>Shorten your first URL above to see telemetry appear here.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="architecture">
+      <div class="section__head">
+        <div>
+          <h2 class="h2">How a redirect happens</h2>
+          <p class="section__desc">The hot path is deliberately boring: one cache read, one 302, one async write.</p>
+        </div>
+        <span class="badge">Node.js · PostgreSQL 18 · Redis</span>
+      </div>
+
+      <div class="grid grid--3">
+        <article class="card step-card">
+          <span class="step-no mono">01</span>
+          <h3 class="h3">Redis first</h3>
+          <p class="muted small">The short code is looked up in Redis. A warm hit returns in well under 10&nbsp;ms without touching Postgres.</p>
+          <pre class="code mono">GET url:6LAze</pre>
+        </article>
+        <article class="card step-card">
+          <span class="step-no mono">02</span>
+          <h3 class="h3">Postgres fallback</h3>
+          <p class="muted small">On a miss the row is read from Postgres and written back to Redis with a 24-hour TTL. Redirects never wait on analytics.</p>
+          <pre class="code mono">SELECT id, original_url
+FROM urls WHERE short_code = $1</pre>
+        </article>
+        <article class="card step-card">
+          <span class="step-no mono">03</span>
+          <h3 class="h3">Fire and forget</h3>
+          <p class="muted small">The 302 is sent immediately. The click event is written asynchronously with a salted SHA-256 IP hash.</p>
+          <pre class="code mono">302 → original_url
+↳ INSERT INTO clicks …</pre>
+        </article>
+      </div>
+
+      <div class="api-strip card card--soft">
+        <div>
+          <h3 class="h3">API contract</h3>
+          <p class="muted small">Point the frontend at a running instance with the <code class="mono">api-base</code> meta tag or <code class="mono">?api=</code> query parameter.</p>
+        </div>
+        <div class="api-pills">
+          <span class="api-pill"><b>POST</b> <code>/api/shorten</code></span>
+          <span class="api-pill"><b>GET</b> <code>/api/stats/:code</code></span>
+          <span class="api-pill"><b>GET</b> <code>/:code</code> → 302</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="footer__inner">
+        <span>Built by Sipho Makubalo · deterministic Base62, no hash collisions.</span>
+        <div class="row row--tight">
+          <a href="https://github.com/sklevel8/high-performance-url-shortener" target="_blank" rel="noopener">Source</a>
+          <span class="dim">·</span>
+          <a href="https://sklevel8-portfolio.netlify.app" target="_blank" rel="noopener">All projects</a>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

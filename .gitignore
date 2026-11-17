@@ -1,5 +1,9 @@
-node_modules/
+﻿node_modules/
 .env
 .DS_Store
 coverage/
 .neon
+.env.*
+!.env.example
+*.pem
+*.key
